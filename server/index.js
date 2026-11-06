@@ -36,14 +36,16 @@ export function createDeskServer({
   let streamBroken = false;
   let nextHistoryAt = 0;
   let lastBookTimestamp = null;
-  let lastTradeId = null;
+  let lastBookReceivedAt = null;
+  const seenTradeIds = new Set();
   const status = () => ({
     connected,
     recording: recorder.active,
     sessionId: recorder.id,
     lastMessageAt: receivedAt,
-    error: recordingError || error,
-    recordingError,
+    lastBookMessageAt: lastBookReceivedAt,
+    error: recordingError || recorder.error || error,
+    recordingError: recordingError || recorder.error,
     recordingEndReason: recorder.endReason,
     bookValid: book.valid,
     gaps,
@@ -83,7 +85,13 @@ export function createDeskServer({
       record(
         {
           type: "gap",
-          timestamp: lastBookTimestamp ?? now,
+          // Project the failure onto the exchange display axis using elapsed
+          // receive time. The exact failure clock remains receiveTimestamp.
+          timestamp:
+            lastBookTimestamp === null
+              ? now
+              : lastBookTimestamp + Math.max(0, now - lastBookReceivedAt),
+          timestampBasis: "last exchange book plus elapsed receive time",
           receiveTimestamp: now,
           reason,
         },
@@ -119,6 +127,7 @@ export function createDeskServer({
           throw new Error("Malformed book message");
         const snapshot = book.apply(message.type, message.data[0], now);
         lastBookTimestamp = snapshot.timestamp;
+        lastBookReceivedAt = now;
         const bids = snapshot.bids
           .slice(0, 25)
           .reduce((sum, level) => sum + level[1], 0);
@@ -153,15 +162,17 @@ export function createDeskServer({
           )
             throw new Error("Malformed trade data");
           const id = Number(item.trade_id);
-          if (
-            Number.isSafeInteger(id) &&
-            lastTradeId !== null &&
-            id <= lastTradeId
-          )
-            continue;
-          if (Number.isSafeInteger(id)) lastTradeId = id;
+          if (Number.isSafeInteger(id)) {
+            if (seenTradeIds.has(id)) continue;
+            seenTradeIds.add(id);
+            // Bounded cache covers more IDs than any complete raw capture can
+            // hold; an unseen lower ID is not evidence of a duplicate.
+            if (seenTradeIds.size > 250000)
+              seenTradeIds.delete(seenTradeIds.values().next().value);
+          }
           const trade = { timestamp, price, qty, side: item.side };
           trades.push(trade);
+          trades.sort((a, b) => a.timestamp - b.timestamp);
           if (trades.length > 100) trades.shift();
           record({ type: "trade", ...trade }, now);
         }
@@ -315,7 +326,6 @@ export function createDeskServer({
             } catch (cause) {
               return failure(cause.message, 400);
             }
-            const wasActive = recorder.active;
             try {
               recorder.start(book.snapshot(), Date.now(), options);
             } catch (cause) {
@@ -325,7 +335,7 @@ export function createDeskServer({
                 /quota|free disk/.test(cause.message) ? 507 : 500,
               );
             }
-            if (!wasActive && recorder.active) recordingError = null;
+            recordingError = null;
             return json(status());
           }
           if (request.method === "POST" && path === "/api/record/stop") {

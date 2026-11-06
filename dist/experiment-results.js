@@ -1,6 +1,7 @@
 // Summaries are descriptive and local to this browser. Full input remains in the
 // separately exported paper receipt and original recording, never localStorage.
 export const HISTORY_KEY = "desk-paper-history-v1";
+const utf8Size = (text) => new TextEncoder().encode(text).byteLength;
 export function experimentSummary(receipt, now = Date.now()) {
   const { input, result } = receipt;
   const declaration = input.metadata?.experiment;
@@ -135,7 +136,7 @@ export function saveExperiment(summary, storage) {
     );
   const next = [summary, ...saved];
   const text = JSON.stringify(next);
-  if (text.length > 2 * 1024 * 1024)
+  if (utf8Size(text) > 2 * 1024 * 1024)
     throw new Error(
       "History would exceed 2 MiB; no existing result was removed.",
     );
@@ -145,7 +146,7 @@ export function saveExperiment(summary, storage) {
 export function readExperiments(storage) {
   const text = storage.getItem(HISTORY_KEY);
   if (!text) return [];
-  if (text.length > 2 * 1024 * 1024)
+  if (utf8Size(text) > 2 * 1024 * 1024)
     throw new Error(
       "Stored experiment history exceeds 2 MiB; existing data was preserved.",
     );

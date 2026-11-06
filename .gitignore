@@ -15,3 +15,5 @@ test-results/
 delivery-receipt.json
 staging-receipt.json
 dist/release.json
+desk-paper-*.json
+desk-experiment-summaries.json

@@ -12,7 +12,7 @@ bun run test:paper
 bun run test:sessions
 ```
 
-The initial public source has 84 unit tests / 610 assertions. Browser checks use
+The current suite has 90 unit tests / 634 assertions. Browser checks use
 synthetic fixtures and actual local-server interactions: animation and pause,
 source boundaries, replay, raw/compact refusal, fee sensitivity, exact receipt
 reproduction, capture deadline stopping, history reload, concurrent tabs and

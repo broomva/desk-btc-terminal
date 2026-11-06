@@ -154,3 +154,27 @@ test("unplanned stops are exploratory and oversized summaries cannot poison futu
     /invalid/,
   );
 });
+
+test("history byte budget uses UTF-8 for save and read without overwriting existing data", () => {
+  const s = experimentSummary(receipt());
+  let text = null;
+  const storage = {
+    getItem: () => text,
+    setItem: (_, value) => {
+      text = value;
+    },
+  };
+  saveExperiment(s, storage);
+  const original = text;
+  expect(() =>
+    saveExperiment(
+      { ...s, key: "unicode", endReason: "漢".repeat(750000) },
+      storage,
+    ),
+  ).toThrow(/exceed 2 MiB/);
+  expect(text).toBe(original);
+  text = JSON.stringify([{ ...s, endReason: "漢".repeat(750000) }]);
+  const oversized = text;
+  expect(() => readExperiments(storage)).toThrow(/exceeds 2 MiB/);
+  expect(text).toBe(oversized);
+});

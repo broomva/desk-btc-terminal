@@ -39,9 +39,31 @@ event limit, the captured config and matching engine version. Manual, server,
 error, partial or overridden runs remain exploratory. Source/purpose labels are
 self-declared and do not prove an untouched holdout or authenticated provenance.
 
-Summaries persist per browser origin, at most 100 results / 2 MiB without eviction.
+Summaries persist per browser origin, at most 100 results / 2 MiB of serialized UTF-8 without eviction.
 Exclusive Web Locks serialize writers; missing locks, timeout, invalid data or
 full storage refuses saving while the current full receipt remains exportable.
 Browser data clearing loses history. Summary archives omit raw events and cannot
 substitute for full replay receipts. Do not pool these sessions into a win rate
 or claim a trading edge without independent future evaluation.
+
+
+## Feed and display clocks
+
+Gap markers are projected onto the exchange-time display axis from the last
+accepted book plus elapsed recorder time. The exact observed failure time stays
+in `receiveTimestamp`, which governs paper execution. Projection does not claim
+measured clock synchronization. The first recovered book bypasses the ordinary
+one-second recording throttle, so short recoveries remain replayable.
+
+`bookValid` means the retained book passed CRC validation; it is not a freshness
+certificate. `lastBookMessageAt` and `lastMessageAt` expose separate recorder
+clocks. Heartbeats/trades never advance the book clock. Kraken book updates are
+change-driven, so book silence alone does not prove a transport failure and does
+not trigger an artificial disconnect. The UI shows book age/staleness, while the
+paper engine cancels stale quotes and resets filter history at its stricter
+configured age bound. A missing-heartbeat timeout still invalidates and reconnects.
+See [Kraken's feed description](https://support.kraken.com/articles/360022326871-kraken-websocket-api-frequently-asked-questions).
+
+Trade deduplication uses the most recent 250,000 distinct IDs, including unseen
+out-of-order IDs. This cache exceeds the maximum line count of one raw session;
+duplicates older than that rolling window are not guaranteed to be recognized.

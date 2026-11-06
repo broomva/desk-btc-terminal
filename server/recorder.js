@@ -46,6 +46,7 @@ export class Recorder {
     this.startedAt = null;
     this.lastBookAt = null;
     this.endReason = null;
+    this.error = null;
   }
 
   get active() {
@@ -81,6 +82,7 @@ export class Recorder {
       throw new Error(
         "Insufficient free disk space to reserve this session and 64 MiB headroom.",
       );
+    this.error = null;
     this.maxBytes = planned.maxBytes;
     this.maxDuration = planned.maxDuration;
     this.maxEvents = planned.maxEvents;
@@ -141,7 +143,8 @@ export class Recorder {
         try {
           this.stop("Recording duration limit reached");
         } catch (error) {
-          this.endReason = `Recording failed: ${error.message}`;
+          this.error = `Recording failed: ${error.message}`;
+          this.endReason = this.error;
         }
       }, this.maxDuration);
       this.timer.unref?.();
@@ -197,6 +200,7 @@ export class Recorder {
       );
       return;
     }
+    if (event.type === "gap") this.lastBookAt = null;
     if (event.type === "book") {
       if (this.lastBookAt !== null && now - this.lastBookAt < 1000) return;
       this.lastBookAt = now;
