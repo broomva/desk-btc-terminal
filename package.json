@@ -1,0 +1,20 @@
+{
+  "name": "desk-btc-terminal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "check": "biome check dist server tests",
+    "format": "biome format --write dist server tests",
+    "test:browser": "node tests/browser-check.cjs",
+    "start": "bun server/index.js",
+    "test:research": "node tests/research-browser.cjs",
+    "test:paper": "node tests/paper-browser.cjs",
+    "test:live": "bun tests/live-smoke.js",
+    "test:sessions": "node tests/session-browser.cjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.2",
+    "playwright-core": "1.64.0"
+  }
+}
